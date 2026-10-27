@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>BlockCity Studio</title>
+<style>
+:root{color-scheme:dark;--bg:#111923;--panel:#1a2634;--line:#304254;--accent:#54b6ff;--txt:#edf5ff;--muted:#9eb0c4}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font:14px system-ui,-apple-system,sans-serif}
+header{padding:12px 14px;background:#172230;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap}
+h1{font-size:18px;margin:0}small,.muted{color:var(--muted)}button,.filebtn,select,input[type=number]{background:#24364a;color:var(--txt);border:1px solid #40566d;border-radius:9px;padding:9px 10px;font:inherit}
+button,.filebtn{cursor:pointer}button:active,.filebtn:active{background:#315579}button.primary{background:#176da9;border-color:#369fe4}.wrap{display:grid;grid-template-columns:minmax(0,1fr) 275px;gap:10px;padding:10px;max-width:1400px;margin:auto}
+#stage{position:relative;min-height:55vh;height:calc(100dvh - 170px);background:#8dc4e9;border:1px solid var(--line);border-radius:12px;overflow:hidden;touch-action:none}
+#view{width:100%;height:100%;display:block;touch-action:none}.overlay{position:absolute;left:9px;top:9px;background:#101923cc;border:1px solid #ffffff20;padding:8px 10px;border-radius:8px;font-size:12px;pointer-events:none}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:12px;overflow:auto;max-height:calc(100dvh - 170px)}
+h2{font-size:14px;margin:0 0 7px}.section{border-bottom:1px solid var(--line);padding-bottom:11px}.section:last-child{border:0}.row{display:flex;gap:6px;flex-wrap:wrap}.row>*{flex:1;min-width:0}.row button{font-size:12px}.field{display:grid;grid-template-columns:24px 1fr;gap:5px;align-items:center;margin:6px 0}.field input{width:100%;min-width:0}.field input[type=range]{padding:0}.list{display:flex;flex-direction:column;gap:5px;max-height:155px;overflow:auto}.item{display:flex;gap:7px;align-items:center;text-align:left;width:100%;padding:8px;font-size:12px}.item.active{border-color:var(--accent);background:#174365}.badge{font-size:11px;color:#9ed5ff}.mobiletools{display:none}.hint{font-size:12px;color:var(--muted);line-height:1.45}#status{font-size:12px;color:#b8e4ff;min-height:17px;overflow-wrap:anywhere}
+input[type=file]{display:none}
+@media(max-width:800px){.wrap{grid-template-columns:1fr;padding:7px}#stage{height:57dvh;min-height:320px}.panel{max-height:none;overflow:visible}.mobiletools{display:flex}.desktopnote{display:none}header{padding:10px}.headeractions{display:flex;gap:6px;flex-wrap:wrap}.headeractions button{padding:8px;font-size:12px}}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"}}</script>
+</head>
+<body>
+<header><div><h1>🏙️ BlockCity Studio</h1><small>Build a little world from your own models</small></div><div class="headeractions"><button id="newBtn">New scene</button><button class="primary" id="saveBtn">Save project</button><label class="filebtn" for="projectFile">Open project</label><input id="projectFile" type="file" accept=".json,.bcs"></div></header>
+<div class="wrap">
+<main>
+<div id="stage"><canvas id="view"></canvas><div class="overlay" id="overlay">Drag to orbit · pinch/scroll to zoom<br>Tap a model to select it</div></div>
+<div class="row mobiletools" style="margin-top:8px"><button id="focusBtn">Focus selection</button><button id="homeBtn">Reset view</button><button id="groundBtn">Ground on/off</button></div>
+<div class="hint desktopnote" style="margin-top:8px">Tip: use two fingers to zoom on a touchscreen. Select a model in the scene or in the object list to edit it.</div>
+</main>
+<aside class="panel">
+<div class="section"><h2>1 · Add models</h2><div class="row"><label class="filebtn" for="modelFile">＋ Import model</label><input id="modelFile" type="file" multiple accept=".glb,.gltf,.obj,.json,.geo.json"><label class="filebtn" for="textureFile">＋ Texture PNG</label><input id="textureFile" type="file" accept="image/png,.png"></div><div class="row" style="margin-top:6px"><button id="blockBtn">＋ Add block</button><button id="houseBtn">＋ Sample house</button></div><p class="hint">Supported: GLB, glTF, OBJ, and basic Minecraft Bedrock .geo.json geometry. Import PNG textures separately when needed.</p></div>
+<div class="section"><h2>2 · Your objects</h2><div id="objects" class="list"></div><div class="row" style="margin-top:7px"><button id="dupBtn">Duplicate</button><button id="delBtn">Delete</button></div></div>
+<div class="section"><h2>3 · Edit selected</h2><div class="row"><button id="moveMode" class="primary">Move</button><button id="rotateMode">Rotate</button><button id="scaleMode">Scale</button></div><div id="transformFields"></div><div class="row"><button id="resetObjBtn">Reset transform</button><button id="groundObjBtn">Drop to ground</button></div></div>
+<div class="section"><h2>4 · World</h2><div class="row"><button id="gridBtn">Grid on/off</button><button id="groundWorldBtn">Ground on/off</button></div><div class="field"><label for="skyColor">Sky</label><input id="skyColor" type="color" value="#8dc4e9"></div><div class="field"><label for="groundColor">Ground</label><input id="groundColor" type="color" value="#738b70"></div></div>
+<div class="section"><h2>Save & share</h2><button class="primary" id="exportBtn">Download project file</button><p class="hint">This editor runs in your browser. Saving downloads a project file to your phone. To let friends open your editor/game with a link, the website must be published to a free static host such as GitHub Pages. This prototype does not upload anything automatically.</p><div id="status">Ready. Add a block or import a model.</div></div>
+</aside></div>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {OBJLoader} from 'three/addons/loaders/OBJLoader.js';
+import {ObjectLoader} from 'three/addons/loaders/ObjectLoader.js';
+const canvas=document.querySelector('#view'),stage=document.querySelector('#stage'),status=document.querySelector('#status');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false});renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.7));renderer.setSize(stage.clientWidth,stage.clientHeight,false);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;
+const scene=new THREE.Scene();scene.background=new THREE.Color('#8dc4e9');scene.fog=new THREE.Fog('#8dc4e9',35,95);
+const camera=new THREE.PerspectiveCamera(55,stage.clientWidth/stage.clientHeight,.1,500);camera.position.set(12,11,15);
+const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,1,0);controls.enableDamping=true;controls.dampingFactor=.07;controls.maxPolarAngle=Math.PI*.485;controls.minDistance=2;controls.maxDistance=100;
+scene.add(new THREE.HemisphereLight(0xe7f6ff,0x59634d,2.1));
+const sun=new THREE.DirectionalLight(0xfff1d5,2.5);sun.position.set(12,25,10);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-35;sun.shadow.camera.right=35;sun.shadow.camera.top=35;sun.shadow.camera.bottom=-35;scene.add(sun);
+let groundOn=true,gridOn=true,selected=null,mode='move',serial=0;
+const groundMat=new THREE.MeshStandardMaterial({color:'#738b70',roughness:1});
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(120,120),groundMat);ground.rotation.x=-Math.PI/2;ground.position.y=-.04;ground.receiveShadow=true;ground.name='World ground';scene.add(ground);
+const grid=new THREE.GridHelper(120,120,'#526c7b','#9baeb4');grid.position.y=-.025;scene.add(grid);
+const objectsGroup=new THREE.Group();objectsGroup.name='My models';scene.add(objectsGroup);
+const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
+function setStatus(t){status.textContent=t}
+function material(color){return new THREE.MeshStandardMaterial({color,roughness:.86})}
+function shadow(obj){obj.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;if(!o.material)o.material=material('#b7c5d0')}})}
+function register(obj,name){obj.name=name||('Model '+(++serial));obj.userData.editorObject=true;objectsGroup.add(obj);shadow(obj);select(obj);refreshList();setStatus('Added '+obj.name)}
+function addBlock(){const m=new THREE.Mesh(new THREE.BoxGeometry(2,2,2),material('#d6a16f'));m.position.set((Math.random()-.5)*5,1,(Math.random()-.5)*5);register(m,'Block '+(++serial))}
+function addHouse(){const g=new THREE.Group();const wall=new THREE.Mesh(new THREE.BoxGeometry(3,2.4,3),material('#d9b38c'));wall.position.y=1.2;g.add(wall);const roof=new THREE.Mesh(new THREE.ConeGeometry(2.5,1.5,4),material('#a44d43'));roof.position.y=3.15;roof.rotation.y=Math.PI/4;g.add(roof);const door=new THREE.Mesh(new THREE.BoxGeometry(.65,1.3,.08),material('#67432e'));door.position.set(0,.65,1.54);g.add(door);for(let x of [-.85,.85]){let win=new THREE.Mesh(new THREE.BoxGeometry(.55,.55,.08),material('#8dd5e7'));win.position.set(x,1.5,1.55);g.add(win)}g.position.set((Math.random()-.5)*6,0,(Math.random()-.5)*6);register(g,'Sample house '+(++serial))}
+function select(obj){selected=obj;refreshList();refreshFields()}
+function refreshList(){const el=document.querySelector('#objects');el.innerHTML='';const list=objectsGroup.children.filter(o=>o.userData.editorObject);if(!list.length){el.innerHTML='<span class="hint">No models yet. Add a block or import a file.</span>';return}list.forEach(o=>{const b=document.createElement('button');b.className='item'+(o===selected?' active':'');b.textContent=(o===selected?'● ':'')+o.name;b.onclick=()=>{select(o);focus(o)};el.appendChild(b)})}
+function numField(label,key,val,step=.1){const d=document.createElement('div');d.className='field';const l=document.createElement('label');l.textContent=label;const i=document.createElement('input');i.type='number';i.step=step;i.value=Number(val.toFixed(3));i.addEventListener('change',()=>{if(!selected)return;selected[key][label==='X'? 'x':label==='Y'?'y':'z']=Number(i.value)||0;selected.updateMatrixWorld(true)});d.append(l,i);return d}
+function refreshFields(){const box=document.querySelector('#transformFields');box.innerHTML='';if(!selected){box.innerHTML='<span class="hint">Select a model to edit.</span>';return}const key=mode==='move'?'position':mode==='rotate'?'rotation':'scale';for(const axis of ['x','y','z']){const d=document.createElement('div');d.className='field';const l=document.createElement('label');l.textContent=axis.toUpperCase();const i=document.createElement('input');i.type='range';i.min=mode==='rotate'?-3.14:mode==='scale'?.1:-20;i.max=mode==='rotate'?3.14:mode==='scale'?5:20;i.step=mode==='rotate'?.05:mode==='scale'?.05:.1;i.value=selected[key][axis];i.oninput=()=>{selected[key][axis]=Number(i.value);const v=document.createElement('span');v.textContent=Number(i.value).toFixed(2);l.textContent=axis.toUpperCase()+' '+v.textContent};d.append(l,i);box.appendChild(d)}}
+function focus(o){const box=new THREE.Box3().setFromObject(o);if(box.isEmpty())return;const center=box.getCenter(new THREE.Vector3());controls.target.copy(center);const size=box.getSize(new THREE.Vector3()).length();camera.position.copy(center).add(new THREE.Vector3(size*.9,size*.65,size*.9));controls.update()}
+function deleteSelected(){if(!selected)return;objectsGroup.remove(selected);selected=null;refreshList();refreshFields();setStatus('Deleted object')}
+function duplicate(){if(!selected)return;const c=selected.clone(true);c.name=selected.name+' copy';c.position.x+=1.5;c.position.z+=1.5;c.userData.editorObject=true;register(c,c.name)}
+function readFile(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;if(file.name.toLowerCase().endsWith('.json'))r.readAsText(file);else r.readAsArrayBuffer(file)})}
+function loadTexture(file){const url=URL.createObjectURL(file);new THREE.TextureLoader().load(url,tex=>{tex.colorSpace=THREE.SRGBColorSpace;tex.flipY=true;if(selected){selected.traverse(o=>{if(o.isMesh){o.material=o.material.clone();o.material.map=tex;o.material.color.set('#ffffff');o.material.needsUpdate=true}});setStatus('Texture applied to selected model. If UVs differ, texture alignment may need adjustment.')}URL.revokeObjectURL(url)},undefined,e=>setStatus('Could not load texture: '+e.message))}
+function geoImport(data,fileName){
+ let geos=data['minecraft:geometry']||data.geometry||data; if(!Array.isArray(geos))throw Error('No minecraft:geometry array found');
+ const root=new THREE.Group();root.name=fileName.replace(/\.geo\.json$/i,'');let count=0;
+ for(const geo of geos){const desc=geo.description||{},bones=geo.bones||[];for(const bone of bones){const bg=new THREE.Group();bg.name=bone.name||'bone';const pivot=bone.pivot||[0,0,0];bg.position.set((pivot[0]||0)/16,(pivot[1]||0)/16,(pivot[2]||0)/16);if(bone.rotation){bg.rotation.set(THREE.MathUtils.degToRad(bone.rotation[0]||0),THREE.MathUtils.degToRad(bone.rotation[1]||0),THREE.MathUtils.degToRad(bone.rotation[2]||0))}root.add(bg);for(const cube of bone.cubes||[]){const size=cube.size||[1,1,1],origin=cube.origin||[0,0,0],inflate=cube.inflate||0;const geom=new THREE.BoxGeometry(Math.max(.01,(size[0]+inflate*2)/16),Math.max(.01,(size[1]+inflate*2)/16),Math.max(.01,(size[2]+inflate*2)/16));const mat=material('#b6c7d9');const mesh=new THREE.Mesh(geom,mat);const p=cube.pivot||[origin[0]+size[0]/2,origin[1]+size[1]/2,origin[2]+size[2]/2];mesh.position.set((p[0]-pivot[0])/16,(p[1]-pivot[1])/16,(p[2]-pivot[2])/16);if(cube.rotation)mesh.rotation.set(THREE.MathUtils.degToRad(cube.rotation[0]||0),THREE.MathUtils.degToRad(cube.rotation[1]||0),THREE.MathUtils.degToRad(cube.rotation[2]||0));bg.add(mesh);count++}}
+ }
+ if(!count)throw Error('No cubes found in this geometry');root.scale.set(1,1,1);return root;
+}
+async function importModel(file){try{setStatus('Importing '+file.name+'…');const lower=file.name.toLowerCase();let obj;
+ if(lower.endsWith('.geo.json')||lower.endsWith('.json')){const txt=await readFile(file);obj=geoImport(JSON.parse(txt),file.name);setStatus('Imported geometry. This basic importer uses plain materials; add a PNG texture separately.')}
+ else if(lower.endsWith('.obj')){const buf=await readFile(file);obj=new OBJLoader().parse(new TextDecoder().decode(buf))}
+ else {const buf=await readFile(file);obj=await new Promise((resolve,reject)=>new GLTFLoader().parse(buf,'',g=>resolve(g.scene),reject))}
+ obj.position.set(0,0,0);obj.scale.setScalar(1);register(obj,file.name);focus(obj)
+ }catch(e){console.error(e);setStatus('Import failed: '+(e.message||e)+' — try a valid .geo.json, .glb, .gltf, or .obj file.')}}
+document.querySelector('#modelFile').addEventListener('change',e=>{for(const f of e.target.files)importModel(f);e.target.value=''});
+document.querySelector('#textureFile').addEventListener('change',e=>{if(e.target.files[0])loadTexture(e.target.files[0]);e.target.value=''});
+document.querySelector('#blockBtn').onclick=addBlock;document.querySelector('#houseBtn').onclick=addHouse;document.querySelector('#delBtn').onclick=deleteSelected;document.querySelector('#dupBtn').onclick=duplicate;document.querySelector('#focusBtn').onclick=()=>selected&&focus(selected);document.querySelector('#homeBtn').onclick=()=>{camera.position.set(12,11,15);controls.target.set(0,1,0);controls.update()};document.querySelector('#groundBtn').onclick=document.querySelector('#groundWorldBtn').onclick=()=>{groundOn=!groundOn;ground.visible=groundOn};document.querySelector('#gridBtn').onclick=()=>{gridOn=!gridOn;grid.visible=gridOn};document.querySelector('#resetObjBtn').onclick=()=>{if(selected){selected.position.set(0,0,0);selected.rotation.set(0,0,0);selected.scale.set(1,1,1);refreshFields()}};document.querySelector('#groundObjBtn').onclick=()=>{if(selected){const b=new THREE.Box3().setFromObject(selected);selected.position.y-=b.min.y;refreshFields()}};
+document.querySelector('#moveMode').onclick=()=>setMode('move');document.querySelector('#rotateMode').onclick=()=>setMode('rotate');document.querySelector('#scaleMode').onclick=()=>setMode('scale');
+function setMode(m){mode=m;for(const [id,val] of [['moveMode','move'],['rotateMode','rotate'],['scaleMode','scale']])document.getElementById(id).classList.toggle('primary',val===mode);refreshFields()}
+function download(name,blob){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2500)}
+function save(){const data=objectsGroup.toJSON();download('my-blockcity-project.json',new Blob([JSON.stringify(data)],{type:'application/json'}));setStatus('Project downloaded. Keep this JSON file safe.')}
+document.querySelector('#saveBtn').onclick=save;document.querySelector('#exportBtn').onclick=save;document.querySelector('#newBtn').onclick=()=>{if(confirm('Start a new scene? This removes the models from the current scene. Save first if needed.')){for(const o of [...objectsGroup.children])objectsGroup.remove(o);selected=null;refreshList();refreshFields();setStatus('New empty scene')}};document.querySelector('#projectFile').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const text=await f.text(),loader=new ObjectLoader(),loaded=loader.parse(JSON.parse(text));objectsGroup.clear();for(const child of [...loaded.children]){objectsGroup.add(child);child.userData.editorObject=true;shadow(child)}selected=null;refreshList();refreshFields();setStatus('Project loaded.')}catch(err){setStatus('Could not open project: '+err.message)}e.target.value=''});
+canvas.addEventListener('pointerdown',e=>{const rect=canvas.getBoundingClientRect();pointer.x=((e.clientX-rect.left)/rect.width)*2-1;pointer.y=-((e.clientY-rect.top)/rect.height)*2+1;raycaster.setFromCamera(pointer,camera);const hits=raycaster.intersectObjects(objectsGroup.children,true);if(hits.length){let o=hits[0].object;while(o.parent&&o.parent!==objectsGroup)o=o.parent;if(o.parent===objectsGroup&&o.userData.editorObject)select(o)}});
+document.querySelector('#skyColor').oninput=e=>{scene.background.set(e.target.value);scene.fog.color.set(e.target.value)};document.querySelector('#groundColor').oninput=e=>groundMat.color.set(e.target.value);
+function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera)}animate();
+window.addEventListener('resize',()=>{const w=stage.clientWidth,h=stage.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false)});
+refreshList();refreshFields();
+</script></body></html>
